@@ -76,7 +76,6 @@ The app will be available at `http://127.0.0.1:8000`.
 ### 6. Verify
 
 ```bash
-curl http://127.0.0.1:8000/health
 make test
 make check
 ```
@@ -104,7 +103,6 @@ This starts:
 ### 2. Verify
 
 ```bash
-curl http://127.0.0.1:8000/health
 make test
 make check
 ```
@@ -131,8 +129,13 @@ make fix     # auto-fix and format with ruff
 make seed    # create database and schema
 ```
 
+## API Docs
+
+- Common endpoints: [docs/api/common.md](/Users/olehpro/work/tasks/quartr/top_reports/docs/api/common.md)
+- Versioned endpoints: [docs/api/v1.md](/Users/olehpro/work/tasks/quartr/top_reports/docs/api/v1.md)
+
 ## Notes
 
-- The container entrypoint starts only the web server. Database initialization is a separate step.
+- The base container entrypoint in `docker/entrypoint.sh` starts only the web server.
 - `docker-compose.yml` overrides the container command so the app seeds the database before starting.
 - The Docker image and local project configuration both target Python 3.14.
