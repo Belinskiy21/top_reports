@@ -1,0 +1,49 @@
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "I",   # import sorting
+  "B",   # bugbear
+  "UP",  # pyupgrade
+  "SIM", # simplify
+]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+show_error_codes = true
+pretty = true
+exclude = ["venv", ".venv", "build", "dist"]
+
+[tool.basedpyright]
+typeCheckingMode = "recommended"
+pythonVersion = "3.14"
+venvPath = "."
+venv = ".venv"
+extraPaths = ["."]
+include = ["app", "tests", "scripts"]
+exclude = [
+  "**/__pycache__",
+  "**/.mypy_cache",
+  "**/.ruff_cache",
+  "**/.pytest_cache",
+  "**/.venv",
+]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+  "ignore:'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction\\(\\) instead:DeprecationWarning:fastapi\\.routing",
+  "ignore:'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction\\(\\) instead:DeprecationWarning:starlette\\._utils",
+]
