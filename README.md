@@ -131,8 +131,8 @@ make seed    # create database and schema
 
 ## API Docs
 
-- Common endpoints: [docs/api/common.md](/Users/olehpro/work/tasks/quartr/top_reports/docs/api/common.md)
-- Versioned endpoints: [docs/api/v1.md](/Users/olehpro/work/tasks/quartr/top_reports/docs/api/v1.md)
+- Common endpoints: [docs/api/common.md](docs/api/common.md)
+- Versioned endpoints: [docs/api/v1.md](docs/api/v1.md)
 
 ## Notes
 
