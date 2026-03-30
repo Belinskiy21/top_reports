@@ -85,6 +85,14 @@ python -m db.seed
 ```
 
 This creates the target database if it does not already exist, creates the app tables, and seeds a demo user.
+It also seeds the supported companies registry used by the SEC report flow:
+
+- Apple
+- Meta
+- Alphabet
+- Amazon
+- Netflix
+- Goldman Sachs
 
 If you want the app to keep the latest report PDFs warm in storage and avoid slow first-time report generation, enable `REPORT_PREFETCH_ENABLED=true` in your environment before starting the API.
 
@@ -136,6 +144,16 @@ If `REPORT_PREFETCH_ENABLED=true` is set in `.env`, the app will also start a ba
 ```bash
 make test
 make check
+```
+
+With Docker Compose, the app is already started by the `app` service, so you do not run `make serve` separately. `make serve` is only for the local non-Docker flow above.
+
+If you want to run project commands inside the already running app container:
+
+```bash
+docker compose exec app make seed
+docker compose exec app make test
+docker compose exec app make check
 ```
 
 ### 3. Stop the stack
