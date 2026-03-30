@@ -1,0 +1,16 @@
+from pathlib import Path
+from typing import Protocol
+
+from fastapi.responses import Response
+
+
+class StorageBackend(Protocol):
+    def store_pdf(self, company_name: str, pdf_path: Path) -> str: ...
+
+    def get_public_url(self, file_name: str, public_base_url: str) -> str: ...
+
+    def download_file(self, file_name: str) -> Response: ...
+
+    def has_valid_pdf(self, file_name: str) -> bool: ...
+
+    def delete_file(self, file_name: str) -> None: ...

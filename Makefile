@@ -16,7 +16,7 @@ test:
 	$(PYTHON) -m pytest -q
 
 seed:
-	$(PYTHON) db/seed.py
+	$(PYTHON) -m db.seed
 
 serve:
 	$(PYTHON) -m uvicorn app.main:app --host 127.0.0.1 --port 8000

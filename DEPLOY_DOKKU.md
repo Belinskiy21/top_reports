@@ -1,11 +1,12 @@
 # Deploy To Dokku On A DigitalOcean Droplet
 
-This repo is set up for Dokku using the root `Dockerfile` and `Procfile`.
+This repo is set up for Dokku using the root [Dockerfile](/Users/olehpro/work/tasks/quartr/top_reports/Dockerfile) and [Procfile](/Users/olehpro/work/tasks/quartr/top_reports/Procfile).
 
 Dokku references:
 
 - Dockerfile deployment: https://dokku.com/docs/deployment/builders/dockerfiles/
 - App deployment: https://dokku.com/docs/deployment/application-deployment/
+- Environment variables: https://dokku.com/docs/configuration/environment-variables/
 
 ## 1. Install Dokku on the Droplet
 
@@ -29,25 +30,69 @@ dokku plugin:installed postgres
 
 ## 3. Create the app and database service
 
+Replace `top-reports` below if you want a different Dokku app name.
+
 On the Dokku host:
 
 ```bash
-dokku apps:create fastapi-app
-dokku postgres:create fastapi-app-db
-dokku postgres:link fastapi-app-db fastapi-app
+dokku apps:create top-reports
+dokku postgres:create top-reports-db
+dokku postgres:link top-reports-db top-reports
 ```
 
 Linking the Postgres service sets `DATABASE_URL` for the app.
 
-## 4. Add the Dokku git remote
+## 4. Configure environment variables
+
+At minimum, set the app secret and SEC user agent:
+
+```bash
+dokku config:set top-reports \
+  JWT_SECRET=change-me \
+  SEC_USER_AGENT=quartr
+```
+
+Optional settings:
+
+```bash
+dokku config:set top-reports \
+  STORAGE_BACKEND=local \
+  LOCAL_STORAGE_DIR=storage/files \
+  REPORT_PREFETCH_ENABLED=false \
+  REPORT_PREFETCH_INTERVAL_SECONDS=86400 \
+  REPORT_PREFETCH_USER_EMAIL=seeded-user@quartr.dev
+```
+
+Notes:
+
+- `REPORT_PREFETCH_ENABLED=true` enables the background prefetch loop on app boot.
+- `REPORT_PREFETCH_USER_EMAIL` only decides which app user is recorded as the creator of prefetched report rows. User emails are not sent to the SEC API.
+
+## 5. Decide how report PDFs will be stored
+
+For production, S3-style object storage is the safer default because report files should survive deploys and container rebuilds.
+
+If you use S3:
+
+```bash
+dokku config:set top-reports \
+  STORAGE_BACKEND=s3 \
+  S3_BUCKET_NAME=your-bucket \
+  S3_PUBLIC_BASE_URL=https://your-bucket.s3.amazonaws.com \
+  AWS_REGION=eu-north-1
+```
+
+If you keep `STORAGE_BACKEND=local`, make sure you also persist `/app/storage/files` on the Dokku host. Otherwise generated PDFs can disappear on redeploy.
+
+## 6. Add the Dokku git remote
 
 On your local machine:
 
 ```bash
-git remote add dokku dokku@your-droplet-hostname:fastapi-app
+git remote add dokku dokku@your-droplet-hostname:top-reports
 ```
 
-## 5. Deploy
+## 7. Deploy
 
 On your local machine:
 
@@ -57,25 +102,37 @@ git push dokku main
 
 If your default branch is not `main`, push that branch instead.
 
-## 6. Initialize the schema
+## 8. Initialize the schema
 
 Run the seed script once on the Dokku host:
 
 ```bash
-dokku run fastapi-app python db/seed.py
+dokku run top-reports python -m db.seed
 ```
 
-This creates the `users` table in the linked PostgreSQL database.
+This creates the database tables, seeds the supported companies, and creates the demo user.
 
-## 7. Verify
+## 9. Verify
 
 ```bash
-dokku logs fastapi-app
-curl https://your-domain/health
-curl https://your-domain/users
+dokku logs top-reports
+curl https://your-domain/
+```
+
+Optional auth check:
+
+```bash
+curl -X POST https://your-domain/api/v1/sign-in \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "seeded-user@quartr.dev",
+    "password": "seeded-password"
+  }'
 ```
 
 ## Notes
 
-- The app respects the `PORT` environment variable, which Dokku requires.
-- `docker/entrypoint.sh` only starts the web process. Seeding is an explicit Dokku command.
+- Dokku provides `PORT`, and the app respects it.
+- [docker/entrypoint.sh](/Users/olehpro/work/tasks/quartr/top_reports/docker/entrypoint.sh) starts only the web process.
+- Seeding is an explicit Dokku command and is not part of the container entrypoint.
+- The root endpoint is `GET /`, not `/health`.

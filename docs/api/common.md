@@ -1,13 +1,13 @@
 # Common API
 
-## `GET /health`
+## `GET /`
 
 Returns a simple liveness response for infrastructure checks, local verification, and container health monitoring.
 
 ### Request
 
 - Method: `GET`
-- Path: `/health`
+- Path: `/`
 - Authentication: none
 - Request body: none
 

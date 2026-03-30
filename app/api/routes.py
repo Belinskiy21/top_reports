@@ -6,6 +6,6 @@ router = APIRouter()
 health_service = HealthService()
 
 
-@router.get("/health")
+@router.get("/")
 def health_check() -> dict[str, str]:
     return health_service.get_status()
