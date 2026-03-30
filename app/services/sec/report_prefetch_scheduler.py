@@ -30,6 +30,7 @@ class ReportPrefetchScheduler:
         if not self._enabled or self._task is not None:
             return
 
+        logger.info("Starting scheduled SEC prefetch")
         self._task = asyncio.create_task(self._run_loop())
 
     async def stop(self) -> None:
@@ -60,5 +61,6 @@ class ReportPrefetchScheduler:
                     session,
                     created_by=user.id,
                 )
+                logger.info("Scheduled SEC prefetch completed")
             except SecRequestError:
                 logger.exception("Scheduled SEC prefetch failed")

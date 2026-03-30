@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from app.services.sec.sec_client import SEC_DATA_BASE_URL, SecClient
+from app.services.sec.sec_client import DEFAULT_SEC_USER_AGENT, SEC_DATA_BASE_URL, SecClient
 
 
 class StubResponse:
@@ -28,7 +28,7 @@ class StubHttpClient:
 
 
 def test_get_submissions_calls_sec_data_url(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SEC_USER_AGENT", "quartr")
+    monkeypatch.setenv("SEC_USER_AGENT", DEFAULT_SEC_USER_AGENT)
     client = SecClient()
     stub_http_client = StubHttpClient(StubResponse(json_data={"filings": {}}))
     monkeypatch.setattr(client, "_client", stub_http_client)
@@ -37,11 +37,11 @@ def test_get_submissions_calls_sec_data_url(monkeypatch: pytest.MonkeyPatch) -> 
 
     assert payload == {"filings": {}}
     assert stub_http_client.calls[0][0] == f"{SEC_DATA_BASE_URL}submissions/CIK0000320193.json"
-    assert stub_http_client.calls[0][1]["User-Agent"] == "quartr"
+    assert stub_http_client.calls[0][1]["User-Agent"] == DEFAULT_SEC_USER_AGENT
 
 
 def test_download_file_returns_response_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SEC_USER_AGENT", "quartr")
+    monkeypatch.setenv("SEC_USER_AGENT", DEFAULT_SEC_USER_AGENT)
     client = SecClient()
     stub_http_client = StubHttpClient(StubResponse(content=b"file-bytes"))
     monkeypatch.setattr(client, "_client", stub_http_client)
@@ -50,4 +50,4 @@ def test_download_file_returns_response_bytes(monkeypatch: pytest.MonkeyPatch) -
 
     assert content == b"file-bytes"
     assert stub_http_client.calls[0][0] == "https://www.sec.gov/test-file.txt"
-    assert stub_http_client.calls[0][1]["User-Agent"] == "quartr"
+    assert stub_http_client.calls[0][1]["User-Agent"] == DEFAULT_SEC_USER_AGENT

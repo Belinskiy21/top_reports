@@ -8,6 +8,9 @@ class CompanyService:
     def find_all(self, session: Session) -> list[CompanyRecord]:
         return list(session.scalars(select(CompanyRecord).order_by(CompanyRecord.name)).all())
 
+    def find_all_names(self, session: Session) -> list[str]:
+        return [company.name for company in self.find_all(session)]
+
     def find_by_name(self, session: Session, company_name: str) -> CompanyRecord | None:
         return session.scalar(select(CompanyRecord).where(CompanyRecord.name == company_name))
 

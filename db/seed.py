@@ -74,9 +74,9 @@ def _seed_user() -> None:
 
         user.auth_token = jwt_generator.generate(user_id=user.id, email=user.email)
         user = user_service.save(session, user)
-        print(f"Seeded user email: {user.email}")
-        print(f"Seeded user password: {SEEDED_USER_PASSWORD}")
-        print(f"Seeded user token: {user.auth_token}")
+        print(f"Seeded user email: {user.email}", flush=True)
+        print(f"Seeded user password: {SEEDED_USER_PASSWORD}", flush=True)
+        print(f"Seeded user token: {user.auth_token}", flush=True)
 
 
 if __name__ == "__main__":

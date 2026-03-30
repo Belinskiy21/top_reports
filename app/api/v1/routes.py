@@ -14,10 +14,12 @@ from app.schema.sec import GetReportRequest
 from app.schema.user import AuthenticatedUser, UserSignInRequest, UserSignUpRequest
 from app.services.auth import AuthService, InvalidCredentialsError, UserAlreadyExistsError
 from app.services.sec import SecReportService
+from app.services.validations import RequestValidationService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1")
 auth_service = AuthService()
+request_validation_service = RequestValidationService()
 sec_report_service = SecReportService()
 
 
@@ -60,11 +62,19 @@ async def get_report_urls(
     session: Annotated[Session, Depends(get_session)],
     current_user: Annotated[UserRecord, Depends(get_current_user)],
 ) -> dict[str, str]:
+    validated_report_type = request_validation_service.get_validated_report_type(
+        payload.report_type,
+        sec_report_service.get_supported_report_types(),
+    )
+    validated_company_names = request_validation_service.get_validated_company_names(
+        session,
+        payload.companies,
+    )
     try:
         return await sec_report_service.get_recent_report_urls(
             session=session,
-            report_type=payload.report_type,
-            company_names=cast(Sequence[str], payload.companies),
+            report_type=validated_report_type,
+            company_names=cast(Sequence[str], validated_company_names),
             public_base_url=str(request.base_url),
             created_by=current_user.id,
         )

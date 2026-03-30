@@ -6,6 +6,8 @@ from urllib.parse import urlparse
 
 import httpx
 
+from app.services.sec.sec_client import DEFAULT_SEC_USER_AGENT
+
 SEC_HOSTS = {"www.sec.gov", "data.sec.gov"}
 type UrlFetcher = Callable[[str], dict[str, object]]
 
@@ -13,7 +15,7 @@ type UrlFetcher = Callable[[str], dict[str, object]]
 class SecAssetFetcher:
     def build(self) -> UrlFetcher:
         default_url_fetcher = self._get_default_url_fetcher()
-        default_user_agent = os.getenv("SEC_USER_AGENT", "quartr")
+        default_user_agent = os.getenv("SEC_USER_AGENT", DEFAULT_SEC_USER_AGENT)
 
         def fetch(url: str) -> dict[str, object]:
             if urlparse(url).hostname not in SEC_HOSTS:

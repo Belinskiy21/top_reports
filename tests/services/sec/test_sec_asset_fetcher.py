@@ -1,6 +1,7 @@
 import pytest
 
 from app.services.sec.sec_asset_fetcher import SecAssetFetcher
+from app.services.sec.sec_client import DEFAULT_SEC_USER_AGENT
 
 
 def test_build_returns_fetcher() -> None:
@@ -10,7 +11,7 @@ def test_build_returns_fetcher() -> None:
 
 
 def test_build_uses_sec_headers(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SEC_USER_AGENT", "quartr")
+    monkeypatch.setenv("SEC_USER_AGENT", DEFAULT_SEC_USER_AGENT)
     captured: dict[str, object] = {}
     service = SecAssetFetcher()
 
@@ -41,7 +42,7 @@ def test_build_uses_sec_headers(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert captured["url"] == "https://www.sec.gov/Archives/test.jpg"
     assert captured["headers"] == {
-        "User-Agent": "quartr",
+        "User-Agent": DEFAULT_SEC_USER_AGENT,
         "Accept-Encoding": "gzip, deflate",
     }
     assert captured["timeout"] == 30.0

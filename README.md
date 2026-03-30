@@ -14,6 +14,7 @@ Use [.env.example](.env.example) as the reference list of supported environment 
 The app also supports an optional background prefetch job for SEC reports:
 
 - `REPORT_PREFETCH_ENABLED=true` enables a scheduled cache warm-up loop
+- `SEC_USER_AGENT` should be set to a real app-level contact string like `top-reports sec-contact@your-domain.com`; generic values such as `quartr` may be rejected by SEC with `403`
 - `REPORT_PREFETCH_INTERVAL_SECONDS` controls how often it runs, default `86400`
 - `REPORT_PREFETCH_USER_EMAIL` selects which app user is recorded as the creator of prefetched report rows
 
@@ -94,7 +95,7 @@ It also seeds the supported companies registry used by the SEC report flow:
 - Netflix
 - Goldman Sachs
 
-If you want the app to keep the latest report PDFs warm in storage and avoid slow first-time report generation, enable `REPORT_PREFETCH_ENABLED=true` in your environment before starting the API.
+If you want the app to keep the latest report PDFs warm in storage and avoid slow first-time report generation, enable `REPORT_PREFETCH_ENABLED=true` in your environment before starting the API. Also set `SEC_USER_AGENT` to a real app-level contact string so SEC does not reject the prefetch requests.
 
 ### 5. Start the API
 
@@ -103,6 +104,12 @@ make serve
 ```
 
 The app will be available at `http://127.0.0.1:8000`.
+
+Start the API with prefetch enabled:
+
+```bash
+REPORT_PREFETCH_ENABLED=true make serve
+```
 
 ### 6. Verify
 
@@ -128,10 +135,24 @@ On the host machine, create a local env file first if you have not already:
 cp .env.example .env
 ```
 
+Then update `.env` with a real SEC contact user agent, for example:
+
+```bash
+SEC_USER_AGENT=top-reports sec-contact@your-domain.com
+```
+
 Then start the containers from the host machine:
 
 ```bash
 docker compose up --build
+```
+
+Docker Compose uses the internal `db` hostname for the app container automatically. You do not need to set a container-specific `DATABASE_URL` in `.env` for this flow.
+
+To read the seeded JWT after startup, inspect the app container logs:
+
+```bash
+docker compose logs app
 ```
 
 This starts:
@@ -140,6 +161,12 @@ This starts:
 - FastAPI on `http://127.0.0.1:8000`
 
 If `REPORT_PREFETCH_ENABLED=true` is set in `.env`, the app will also start a background prefetch loop on boot. That loop checks SEC metadata on the configured interval, refreshes the latest supported reports, and removes replaced PDFs so only the newest generated file is kept per company/report type.
+
+Start Docker Compose with prefetch enabled without editing `.env`:
+
+```bash
+REPORT_PREFETCH_ENABLED=true docker compose up --build
+```
 
 ### 2. Verify
 

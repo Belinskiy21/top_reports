@@ -26,9 +26,10 @@ services:
       db:
         condition: service_healthy
     environment:
+      PYTHONUNBUFFERED: "1"
       PORT: ${PORT:-8000}
       JWT_SECRET: ${JWT_SECRET:-top_reports_dev_secret}
-      SEC_USER_AGENT: ${SEC_USER_AGENT:-quartr}
+      SEC_USER_AGENT: ${SEC_USER_AGENT:-top-reports sec-contact@your-domain.com}
       STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
       LOCAL_STORAGE_DIR: ${LOCAL_STORAGE_DIR:-storage/files}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
@@ -37,8 +38,11 @@ services:
       REPORT_PREFETCH_ENABLED: ${REPORT_PREFETCH_ENABLED:-false}
       REPORT_PREFETCH_INTERVAL_SECONDS: ${REPORT_PREFETCH_INTERVAL_SECONDS:-86400}
       REPORT_PREFETCH_USER_EMAIL: ${REPORT_PREFETCH_USER_EMAIL:-seeded-user@quartr.dev}
-      DATABASE_URL:
-        ${DATABASE_URL:-postgresql+psycopg://postgres:postgres@db:5432/top_reports}
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-top_reports}
     command: >
       sh -c "python -m db.seed &&
       exec python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"

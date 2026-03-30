@@ -4,7 +4,7 @@ from typing import Protocol
 from fastapi.responses import Response
 
 
-class StorageBackend(Protocol):
+class StorageBackendProtocol(Protocol):
     def store_pdf(self, company_name: str, pdf_path: Path) -> str: ...
 
     def get_public_url(self, file_name: str, public_base_url: str) -> str: ...

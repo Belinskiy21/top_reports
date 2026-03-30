@@ -4,7 +4,9 @@ from pathlib import Path
 from typing import cast
 from urllib.parse import urljoin
 
-from app.services.converters.html_to_pdf.html_renderer_factory import HtmlRendererFactory
+from app.services.converters.html_to_pdf.html_renderer_factory_protocol import (
+    HtmlRendererFactoryProtocol,
+)
 
 type UrlFetcher = Callable[[str], dict[str, object]]
 
@@ -29,7 +31,7 @@ def filing_base_url(filing_url: str) -> str:
     return urljoin(filing_url, ".")
 
 
-def _get_html_renderer() -> HtmlRendererFactory:
+def _get_html_renderer() -> HtmlRendererFactoryProtocol:
     try:
         weasyprint = import_module("weasyprint")
     except ModuleNotFoundError as exc:
@@ -37,4 +39,4 @@ def _get_html_renderer() -> HtmlRendererFactory:
             "weasyprint is required for PDF conversion. Install project dependencies first.",
         ) from exc
 
-    return cast(HtmlRendererFactory, weasyprint.HTML)
+    return cast(HtmlRendererFactoryProtocol, weasyprint.HTML)

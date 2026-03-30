@@ -200,12 +200,12 @@ class StubSecAssetFetcher:
 
 def test_get_recent_report_urls_returns_cached_file_url(db_session: Session) -> None:
     service = SecReportService()
-    service._company_service = StubCompanyService(  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._company_service = StubCompanyService(  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
         CompanyRecord(id=1, name="Apple", cik="0000320193", ticker="AAPL"),
     )
-    service._sec_client = StubSecClient()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
-    service._filing_url_service = StubFilingUrlService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
-    service._report_file_service = StubReportFileService(  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._sec_client = StubSecClient()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._filing_url_service = StubFilingUrlService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._report_file_service = StubReportFileService(  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
         ReportFileRecord(
             id=3,
             company_id=1,
@@ -218,7 +218,7 @@ def test_get_recent_report_urls_returns_cached_file_url(db_session: Session) -> 
             created_by=1,
         ),
     )
-    service._storage_service = StubStorageService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._storage_service = StubStorageService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
 
     report_urls = asyncio.run(
         service.get_recent_report_urls(
@@ -240,14 +240,14 @@ def test_get_recent_report_urls_creates_and_stores_missing_report(
     service = SecReportService()
     report_file_service = StubReportFileService()
     storage_service = StubStorageService()
-    service._company_service = StubCompanyService(  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._company_service = StubCompanyService(  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
         CompanyRecord(id=1, name="Apple", cik="0000320193", ticker="AAPL"),
     )
-    service._sec_client = StubSecClient()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
-    service._filing_url_service = StubFilingUrlService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
-    service._report_file_service = report_file_service  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
-    service._storage_service = storage_service  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
-    service._sec_asset_fetcher = StubSecAssetFetcher()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._sec_client = StubSecClient()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._filing_url_service = StubFilingUrlService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._report_file_service = report_file_service  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._storage_service = storage_service  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._sec_asset_fetcher = StubSecAssetFetcher()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
 
     def stub_html_to_pdf(
         origin_file: Path,
@@ -260,7 +260,7 @@ def test_get_recent_report_urls_creates_and_stores_missing_report(
         _ = pdf_path.write_bytes(b"%PDF-1.4 test")
         return pdf_path
 
-    monkeypatch.setattr("app.services.sec.sec_report_service.html_to_pdf", stub_html_to_pdf)
+    monkeypatch.setattr("app.services.sec.ten_k_report_service.html_to_pdf", stub_html_to_pdf)
     report_urls = asyncio.run(
         service.get_recent_report_urls(
             session=db_session,
@@ -295,14 +295,14 @@ def test_get_recent_report_urls_regenerates_invalid_cached_pdf(
     )
     report_file_service = StubReportFileService(cached_report)
     storage_service = StubStorageService(has_valid_pdf=False)
-    service._company_service = StubCompanyService(  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._company_service = StubCompanyService(  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
         CompanyRecord(id=1, name="Apple", cik="0000320193", ticker="AAPL"),
     )
-    service._sec_client = StubSecClient()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
-    service._filing_url_service = StubFilingUrlService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
-    service._report_file_service = report_file_service  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
-    service._storage_service = storage_service  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
-    service._sec_asset_fetcher = StubSecAssetFetcher()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._sec_client = StubSecClient()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._filing_url_service = StubFilingUrlService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._report_file_service = report_file_service  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._storage_service = storage_service  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._sec_asset_fetcher = StubSecAssetFetcher()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
 
     def stub_html_to_pdf(
         origin_file: Path,
@@ -315,7 +315,7 @@ def test_get_recent_report_urls_regenerates_invalid_cached_pdf(
         _ = pdf_path.write_bytes(b"%PDF-1.4 test")
         return pdf_path
 
-    monkeypatch.setattr("app.services.sec.sec_report_service.html_to_pdf", stub_html_to_pdf)
+    monkeypatch.setattr("app.services.sec.ten_k_report_service.html_to_pdf", stub_html_to_pdf)
     report_urls = asyncio.run(
         service.get_recent_report_urls(
             session=db_session,
@@ -378,7 +378,7 @@ def test_get_recent_report_urls_raises_for_unsupported_report_type(db_session: S
 
 def test_get_recent_report_urls_raises_for_unsupported_company(db_session: Session) -> None:
     service = SecReportService()
-    service._company_service = StubCompanyService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._company_service = StubCompanyService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
 
     with pytest.raises(ValueError, match="Company is not supported: Unknown"):
         _ = asyncio.run(

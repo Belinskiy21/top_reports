@@ -49,7 +49,7 @@ At minimum, set the app secret and SEC user agent:
 ```bash
 dokku config:set top-reports \
   JWT_SECRET=change-me \
-  SEC_USER_AGENT=quartr
+  SEC_USER_AGENT=top-reports sec-contact@your-domain.com
 ```
 
 Optional settings:
