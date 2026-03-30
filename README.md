@@ -122,11 +122,13 @@ The app waits for Postgres, runs `python -m db.seed`, and then starts Uvicorn.
 
 ### 1. Start the stack
 
-Create a local env file first if you have not already:
+On the host machine, create a local env file first if you have not already:
 
 ```bash
 cp .env.example .env
 ```
+
+Then start the containers from the host machine:
 
 ```bash
 docker compose up --build
