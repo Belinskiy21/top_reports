@@ -275,8 +275,5 @@ curl -L "<file-url-from-get-report-urls>" \
 - Common endpoints: [docs/api/common.md](docs/api/common.md)
 - Versioned endpoints: [docs/api/v1.md](docs/api/v1.md)
 
-## Notes
-
-- The base container entrypoint in `docker/entrypoint.sh` starts only the web server.
 - `docker-compose.yml` overrides the container command so the app seeds the database before starting.
 - The Docker image and local project configuration both target Python 3.14.
