@@ -69,18 +69,6 @@ class ReportFileService:
             .order_by(ReportFileRecord.created_at.desc(), ReportFileRecord.id.desc()),
         )
 
-    def update_stored_file_name(
-        self,
-        session: Session,
-        report_file: ReportFileRecord,
-        stored_file_name: str,
-    ) -> ReportFileRecord:
-        report_file.stored_file_name = stored_file_name
-        session.add(report_file)
-        session.commit()
-        session.refresh(report_file)
-        return report_file
-
     def update_report(
         self,
         session: Session,

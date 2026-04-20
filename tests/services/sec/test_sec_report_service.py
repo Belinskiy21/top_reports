@@ -14,18 +14,11 @@ from app.services.sec.sec_report_service import SecReportService
 class StubCompanyService:
     def __init__(self, company: CompanyRecord | None = None) -> None:
         self.company: CompanyRecord | None = company
-        self.created_company: CompanyRecord | None = None
 
     def find_by_name(self, session: Session, company_name: str) -> CompanyRecord | None:
         _ = session
         _ = company_name
         return self.company
-
-    def create(self, session: Session, *, name: str, cik: str, ticker: str | None) -> CompanyRecord:
-        _ = session
-        self.created_company = CompanyRecord(id=1, name=name, cik=cik, ticker=ticker)
-        self.company = self.created_company
-        return self.created_company
 
 
 class StubSecClient:
@@ -41,8 +34,8 @@ class StubSecClient:
         return b"<html>Report</html>"
 
 
-class StubFilingUrlService:
-    def get_recent_report_metadata(
+class StubRecentFilingMetadataService:
+    def get_data(
         self,
         cik: str,
         report_type: str,
@@ -63,7 +56,6 @@ class StubReportFileService:
     def __init__(self, cached_report: ReportFileRecord | None = None) -> None:
         self.cached_report: ReportFileRecord | None = cached_report
         self.created_kwargs: dict[str, object] | None = None
-        self.updated_file_name: str | None = None
         self.updated_report_kwargs: dict[str, object] | None = None
 
     def find_cached(
@@ -121,18 +113,6 @@ class StubReportFileService:
         _ = company_id
         _ = report_type
         return self.cached_report
-
-    def update_stored_file_name(
-        self,
-        session: Session,
-        report_file: ReportFileRecord,
-        stored_file_name: str,
-    ) -> ReportFileRecord:
-        _ = session
-        report_file.stored_file_name = stored_file_name
-        self.updated_file_name = stored_file_name
-        self.cached_report = report_file
-        return report_file
 
     def update_report(self, session: Session, **kwargs: object) -> ReportFileRecord:
         _ = session
@@ -204,7 +184,7 @@ def test_get_recent_report_urls_returns_cached_file_url(db_session: Session) -> 
         CompanyRecord(id=1, name="Apple", cik="0000320193", ticker="AAPL"),
     )
     service._ten_k_report_service._sec_client = StubSecClient()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
-    service._ten_k_report_service._filing_url_service = StubFilingUrlService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._recent_filing_metadata_service = StubRecentFilingMetadataService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
     service._ten_k_report_service._report_file_service = StubReportFileService(  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
         ReportFileRecord(
             id=3,
@@ -244,7 +224,7 @@ def test_get_recent_report_urls_creates_and_stores_missing_report(
         CompanyRecord(id=1, name="Apple", cik="0000320193", ticker="AAPL"),
     )
     service._ten_k_report_service._sec_client = StubSecClient()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
-    service._ten_k_report_service._filing_url_service = StubFilingUrlService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._recent_filing_metadata_service = StubRecentFilingMetadataService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
     service._ten_k_report_service._report_file_service = report_file_service  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
     service._ten_k_report_service._storage_service = storage_service  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
     service._ten_k_report_service._sec_asset_fetcher = StubSecAssetFetcher()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
@@ -299,7 +279,7 @@ def test_get_recent_report_urls_regenerates_invalid_cached_pdf(
         CompanyRecord(id=1, name="Apple", cik="0000320193", ticker="AAPL"),
     )
     service._ten_k_report_service._sec_client = StubSecClient()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
-    service._ten_k_report_service._filing_url_service = StubFilingUrlService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    service._ten_k_report_service._recent_filing_metadata_service = StubRecentFilingMetadataService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
     service._ten_k_report_service._report_file_service = report_file_service  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
     service._ten_k_report_service._storage_service = storage_service  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
     service._ten_k_report_service._sec_asset_fetcher = StubSecAssetFetcher()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]

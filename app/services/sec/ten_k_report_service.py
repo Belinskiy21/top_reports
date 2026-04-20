@@ -10,7 +10,7 @@ from app.models.report_file import ReportFileRecord
 from app.services.company import CompanyService
 from app.services.converters.html_to_pdf.html_to_pdf import filing_base_url, html_to_pdf
 from app.services.report_file import ReportFileService
-from app.services.sec.filing_url_service import FilingUrlService
+from app.services.sec.recent_filing_metadata_service import RecentFilingMetadataService
 from app.services.sec.recent_report_metadata import RecentReportMetadata
 from app.services.sec.sec_asset_fetcher import SecAssetFetcher
 from app.services.sec.sec_client import SecClient
@@ -26,7 +26,7 @@ class TenKReportService:
     def __init__(self) -> None:
         self._sec_client: SecClient = SecClient()
         self._company_service: CompanyService = CompanyService()
-        self._filing_url_service: FilingUrlService = FilingUrlService()
+        self._recent_filing_metadata_service: RecentFilingMetadataService = RecentFilingMetadataService()
         self._report_file_service: ReportFileService = ReportFileService()
         self._storage_service: StorageService = StorageService()
         self._sec_asset_fetcher: SecAssetFetcher = SecAssetFetcher()
@@ -173,7 +173,7 @@ class TenKReportService:
 
     async def _get_recent_report_metadata(self, company_cik: str) -> RecentReportMetadata:
         submissions = await self._sec_client.get_submissions(company_cik)
-        return self._filing_url_service.get_recent_report_metadata(
+        return self._recent_filing_metadata_service.get_data(
             cik=company_cik,
             report_type=self.REPORT_TYPE,
             submissions=submissions,

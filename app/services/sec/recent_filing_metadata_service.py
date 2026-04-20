@@ -5,8 +5,8 @@ from app.services.sec.recent_report_metadata import RecentReportMetadata
 from app.services.sec.sec_client import SEC_BASE_URL
 
 
-class FilingUrlService:
-    def get_recent_report_metadata(
+class RecentFilingMetadataService:
+    def get_data(
         self,
         cik: str,
         report_type: str,

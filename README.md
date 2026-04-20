@@ -254,7 +254,7 @@ Request report URLs:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/get-report-urls \
-  -H "Authorization: Bearer <jwt-token>" \
+-H "Authorization: Bearer <jwt-token>" \
   -H "Content-Type: application/json" \
   -d '{
     "report_type": "10-K",
@@ -269,6 +269,9 @@ curl -L "<file-url-from-get-report-urls>" \
   -H "Authorization: Bearer <jwt-token>" \
   --output apple_report.pdf
 ```
+
+With `STORAGE_BACKEND=local`, that file URL points back to `GET /api/v1/files/{file_name}` on this API.
+With `STORAGE_BACKEND=s3`, `POST /api/v1/get-report-urls` can return a direct object URL instead.
 
 ## API Docs
 
