@@ -26,7 +26,9 @@ class TenKReportService:
     def __init__(self) -> None:
         self._sec_client: SecClient = SecClient()
         self._company_service: CompanyService = CompanyService()
-        self._recent_filing_metadata_service: RecentFilingMetadataService = RecentFilingMetadataService()
+        self._recent_filing_metadata_service: RecentFilingMetadataService = (
+            RecentFilingMetadataService()
+        )
         self._report_file_service: ReportFileService = ReportFileService()
         self._storage_service: StorageService = StorageService()
         self._sec_asset_fetcher: SecAssetFetcher = SecAssetFetcher()
