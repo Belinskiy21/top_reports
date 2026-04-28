@@ -17,6 +17,10 @@ class StubCompanyService:
     def __init__(self, company: CompanyRecord | None = None) -> None:
         self.company: CompanyRecord | None = company
 
+    def find_all(self, session: Session) -> list[CompanyRecord]:
+        _ = session
+        return [] if self.company is None else [self.company]
+
     def find_by_name(self, session: Session, company_name: str) -> CompanyRecord | None:
         _ = session
         _ = company_name
@@ -218,7 +222,7 @@ def test_get_recent_report_urls_returns_cached_file_url(db_session: Session) -> 
     assert report_urls == {"Apple": "http://testserver/api/v1/files/cached_apple.pdf"}
 
 
-def test_get_recent_report_urls_creates_and_stores_missing_report(
+def test_prefetch_recent_reports_creates_and_stores_missing_report(
     db_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -249,23 +253,19 @@ def test_get_recent_report_urls_creates_and_stores_missing_report(
         return pdf_path
 
     monkeypatch.setattr("app.services.sec.ten_k_report_service.html_to_pdf", stub_html_to_pdf)
-    report_urls = asyncio.run(
-        service.get_recent_report_urls(
+    _ = asyncio.run(
+        service._ten_k_report_service.prefetch_recent_reports(  # pyright: ignore[reportPrivateUsage]
             session=db_session,
-            report_type="10-K",
-            company_names=["Apple"],
-            public_base_url="http://testserver/",
             created_by=1,
         ),
     )
 
-    assert report_urls == {"Apple": "http://testserver/api/v1/files/apple_report.pdf"}
     assert report_file_service.created_kwargs is not None
     assert report_file_service.created_kwargs["stored_file_name"] == "apple_report.pdf"
     assert storage_service.stored_company_name == "Apple"
 
 
-def test_get_recent_report_urls_regenerates_invalid_cached_pdf(
+def test_prefetch_recent_reports_regenerates_invalid_cached_pdf(
     db_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -307,21 +307,70 @@ def test_get_recent_report_urls_regenerates_invalid_cached_pdf(
         return pdf_path
 
     monkeypatch.setattr("app.services.sec.ten_k_report_service.html_to_pdf", stub_html_to_pdf)
-    report_urls = asyncio.run(
-        service.get_recent_report_urls(
+    _ = asyncio.run(
+        service._ten_k_report_service.prefetch_recent_reports(  # pyright: ignore[reportPrivateUsage]
             session=db_session,
-            report_type="10-K",
-            company_names=["Apple"],
-            public_base_url="http://testserver/",
             created_by=1,
         ),
     )
 
-    assert report_urls == {"Apple": "http://testserver/api/v1/files/apple_report.pdf"}
     assert report_file_service.updated_report_kwargs is not None
     assert report_file_service.updated_report_kwargs["stored_file_name"] == "apple_report.pdf"
     assert report_file_service.created_kwargs is None
     assert storage_service.deleted_file_name == "broken_apple.pdf"
+
+
+def test_get_recent_report_urls_raises_when_cached_report_is_missing(db_session: Session) -> None:
+    service = SecReportService()
+    service._ten_k_report_service._company_service = StubCompanyService(  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+        CompanyRecord(id=1, name="Apple", cik="0000320193", ticker="AAPL"),
+    )
+    service._ten_k_report_service._report_file_service = StubReportFileService()  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+
+    with pytest.raises(ValueError, match="Report is not available yet for company: Apple"):
+        _ = asyncio.run(
+            service.get_recent_report_urls(
+                session=db_session,
+                report_type="10-K",
+                company_names=["Apple"],
+                public_base_url="http://testserver/",
+                created_by=1,
+            ),
+        )
+
+
+def test_get_recent_report_urls_raises_when_cached_pdf_is_invalid(db_session: Session) -> None:
+    service = SecReportService()
+    service._ten_k_report_service._company_service = StubCompanyService(  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+        CompanyRecord(id=1, name="Apple", cik="0000320193", ticker="AAPL"),
+    )
+    service._ten_k_report_service._report_file_service = StubReportFileService(  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+        ReportFileRecord(
+            id=3,
+            company_id=1,
+            report_type="10-K",
+            accession_number="0000320193-24-000001",
+            primary_document="aapl-10k.htm",
+            filing_date="2024-10-01",
+            filing_url="https://www.sec.gov/test",
+            stored_file_name="broken_apple.pdf",
+            created_by=1,
+        ),
+    )
+    service._ten_k_report_service._storage_service = StubStorageService(  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+        has_valid_pdf=False,
+    )
+
+    with pytest.raises(ValueError, match="Report is not available yet for company: Apple"):
+        _ = asyncio.run(
+            service.get_recent_report_urls(
+                session=db_session,
+                report_type="10-K",
+                company_names=["Apple"],
+                public_base_url="http://testserver/",
+                created_by=1,
+            ),
+        )
 
 
 def test_download_file_records_history_and_returns_response(db_session: Session) -> None:

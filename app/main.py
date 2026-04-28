@@ -1,12 +1,9 @@
 import logging
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
 from app.api.routes import router as health_router
 from app.api.v1 import router
-from app.services.sec import ReportPrefetchScheduler
 
 
 def _configure_app_logging() -> None:
@@ -22,18 +19,7 @@ def _configure_app_logging() -> None:
 
 
 _configure_app_logging()
-
-scheduler = ReportPrefetchScheduler()
-
-
-@asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
-    scheduler.start()
-    yield
-    await scheduler.stop()
-
-
-app = FastAPI(title="Top Reports", lifespan=lifespan)
+app = FastAPI(title="Top Reports")
 
 
 app.include_router(health_router)

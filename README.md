@@ -1,7 +1,8 @@
 # Top Reports API
 
 FastAPI service for authenticated access to recent SEC company reports.
-It supports user sign-up/sign-in with JWT auth, fetches the latest supported SEC filings for selected companies, converts filings to PDF, stores generated files locally or in S3, and tracks generated report metadata and download history in PostgreSQL via SQLAlchemy.
+It supports user sign-up/sign-in with JWT auth, serves cached SEC report PDFs for selected companies, stores generated files locally or in S3, and tracks generated report metadata and download history in PostgreSQL via SQLAlchemy.
+SEC metadata fetching and PDF generation now run in Celery background processes backed by Redis.
 
 ## Requirements
 
@@ -11,14 +12,15 @@ It supports user sign-up/sign-in with JWT auth, fetches the latest supported SEC
 
 Use [.env.example](.env.example) as the reference list of supported environment variables and default development values.
 
-The app also supports an optional background prefetch job for SEC reports:
+Background report prefetch is part of the default architecture:
 
-- `REPORT_PREFETCH_ENABLED=true` enables a scheduled cache warm-up loop
 - `SEC_USER_AGENT` should be set to a real app-level contact string like `top-reports sec-contact@your-domain.com`; generic values such as `quartr` may be rejected by SEC with `403`
-- `REPORT_PREFETCH_INTERVAL_SECONDS` controls how often it runs, default `86400`
+- `CELERY_BROKER_URL` configures the broker, default `redis://redis:6379/0`
+- `CELERY_RESULT_BACKEND` defaults to the same Redis instance
+- `CELERY_TIMEZONE` controls Celery Beat schedule interpretation, default `UTC`
 - `REPORT_PREFETCH_USER_EMAIL` selects which app user is recorded as the creator of prefetched report rows
 
-This prefetcher exists to reduce cold-request latency when `storage/files` does not already contain generated PDFs. Instead of generating reports only on demand, the app can warm the latest supported filings in the background and keep just the newest PDF per company/report type.
+Celery Beat runs the periodic schedule, Celery Worker executes the jobs, and a one-shot bootstrap process performs the initial warm-up on stack boot. The API request path is cache-only and does not call SEC directly. The default schedule currently refreshes `10-K` daily at `03:00` in the configured Celery timezone.
 
 The app reads database settings from `DATABASE_URL` or from standard Postgres variables:
 
@@ -65,9 +67,15 @@ For local setup, a common pattern is:
 cp .env.example .env
 ```
 
-### 3. Start PostgreSQL
+### 3. Start local infrastructure
 
-Make sure you have a running PostgreSQL instance and that the connection variables point to it.
+`make serve` expects PostgreSQL to already be reachable on the configured host and port. The simplest local setup is to start Postgres and Redis from Docker Compose first:
+
+```bash
+make infra
+```
+
+If you prefer to run PostgreSQL yourself instead of Docker Compose, make sure it is running and that the connection variables point to it.
 
 Example:
 
@@ -95,21 +103,31 @@ It also seeds the supported companies registry used by the SEC report flow:
 - Netflix
 - Goldman Sachs
 
-If you want the app to keep the latest report PDFs warm in storage and avoid slow first-time report generation, enable `REPORT_PREFETCH_ENABLED=true` in your environment before starting the API. Also set `SEC_USER_AGENT` to a real app-level contact string so SEC does not reject the prefetch requests.
+Set `SEC_USER_AGENT` to a real app-level contact string so SEC does not reject the background prefetch requests.
 
-### 5. Start the API
+### 5. Start local processes
 
 ```bash
 make serve
 ```
 
-The app will be available at `http://127.0.0.1:8000`.
+`make serve` now seeds the database, prints the seeded user credentials and token, runs the one-shot startup prefetch, and then starts the API. If PostgreSQL is not reachable, it exits with a short actionable message instead of a long stack trace.
 
-Start the API with prefetch enabled:
+Typical local startup:
 
 ```bash
-REPORT_PREFETCH_ENABLED=true make serve
+make infra
+make serve
 ```
+
+For the full local architecture, also start the worker and beat in separate terminals:
+
+```bash
+make worker
+make beat
+```
+
+The API will be available at `http://127.0.0.1:8000`.
 
 ### 6. Verify
 
@@ -120,12 +138,17 @@ make check
 
 ## Run With Docker Compose
 
-The repo includes `docker-compose.yml` with two services:
+The repo includes `docker-compose.yml` with seven services:
 
 - `db`: PostgreSQL 16
+- `redis`: Redis broker/backend for Celery
+- `seed`: one-shot database and seeded-user initializer
 - `app`: FastAPI app built from the local `Dockerfile`
+- `prefetch_bootstrap`: one-shot startup warm-up process
+- `worker`: Celery worker that runs SEC prefetch tasks
+- `beat`: Celery Beat scheduler that dispatches recurring prefetch tasks
 
-The app waits for Postgres, runs `python -m db.seed`, and then starts Uvicorn.
+The `seed` service runs `python -m db.seed` once. The app, bootstrap, worker, and beat services wait for that initialization to complete before starting.
 
 ### 1. Start the stack
 
@@ -158,15 +181,10 @@ docker compose logs app
 This starts:
 
 - PostgreSQL on `localhost:5432`
+- Redis on the internal `redis:6379` network address
 - FastAPI on `http://127.0.0.1:8000`
-
-If `REPORT_PREFETCH_ENABLED=true` is set in `.env`, the app will also start a background prefetch loop on boot. That loop checks SEC metadata on the configured interval, refreshes the latest supported reports, and removes replaced PDFs so only the newest generated file is kept per company/report type.
-
-Start Docker Compose with prefetch enabled without editing `.env`:
-
-```bash
-REPORT_PREFETCH_ENABLED=true docker compose up --build
-```
+- one startup warm-up pass through `prefetch_bootstrap`
+- Celery worker and Celery Beat for ongoing automatic report warming
 
 ### 2. Verify
 
@@ -200,7 +218,10 @@ docker compose down -v
 ## Useful Commands
 
 ```bash
-make serve   # run uvicorn locally
+make serve   # seed, prefetch once, then run uvicorn locally
+make infra   # start only postgres and redis with docker compose
+make worker  # run celery worker locally
+make beat    # run celery beat locally
 make test    # run pytest
 make check   # run ruff, basedpyright, mypy
 make fix     # auto-fix and format with ruff
@@ -224,7 +245,7 @@ Typical flow:
 3. Call `POST /api/v1/get-report-urls` with `Authorization: Bearer <token>`
 4. Use the returned file URL to download the generated PDF
 
-If background prefetch is enabled, the app starts that loop when FastAPI boots, not during `python -m db.seed`. The scheduler then refreshes the latest supported report for each seeded company on the configured interval and keeps only the newest stored PDF per company/report type. This is intended to reduce report-generation latency when storage is empty or stale.
+The API only serves cached reports. `prefetch_bootstrap` performs one startup warm-up pass, and Celery Beat schedules periodic refresh jobs afterward. Those background jobs refresh the latest supported report for each seeded company and keep only the newest stored PDF per company/report type.
 
 If you use the seeded token printed by `python -m db.seed`, the sign-in request is optional.
 

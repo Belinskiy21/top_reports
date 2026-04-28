@@ -79,6 +79,33 @@ class SecReportService:
                 upstream_message=str(exc),
             ) from exc
 
+    async def prefetch_recent_report_type(
+        self,
+        session: Session,
+        *,
+        report_type: str,
+        created_by: int,
+    ) -> None:
+        report_service = self._get_report_type_service(report_type)
+        try:
+            await report_service.prefetch_recent_reports(
+                session,
+                created_by=created_by,
+            )
+        except httpx.HTTPStatusError as exc:
+            raise SecRequestError(
+                status_code=502,
+                upstream_status_code=exc.response.status_code,
+                upstream_url=str(exc.request.url),
+                upstream_message=exc.response.text[:500],
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise SecRequestError(
+                status_code=502,
+                upstream_url=str(exc.request.url),
+                upstream_message=str(exc),
+            ) from exc
+
     def download_file(
         self,
         session: Session,

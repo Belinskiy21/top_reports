@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import tempfile
 from collections.abc import Sequence
@@ -93,7 +94,6 @@ class TenKReportService:
                 company_name=company_name,
                 request=request,
             )
-
         return report_urls
 
     async def _get_report_url(
@@ -106,12 +106,36 @@ class TenKReportService:
             session,
             company_name,
         )
-        stored_file_name, _ = await self._ensure_recent_report_file(
+        stored_file_name = await self._get_cached_report_file_name(
             session=session,
             company=company,
             request=request,
         )
-        return self._storage_service.get_public_url(stored_file_name, request.public_base_url)
+        return self._storage_service.get_public_url(
+            stored_file_name,
+            request.public_base_url,
+        )
+
+    async def _get_cached_report_file_name(
+        self,
+        session: Session,
+        company: CompanyRecord,
+        request: SecReportRequest,
+    ) -> str:
+        report_file = self._report_file_service.find_latest_by_company_and_type(
+            session,
+            company_id=company.id,
+            report_type=request.report_type,
+        )
+        if report_file is None:
+            raise ValueError(
+                f"Report is not available yet for company: {company.name}",
+            )
+        if not self._storage_service.has_valid_pdf(report_file.stored_file_name):
+            raise ValueError(
+                f"Report is not available yet for company: {company.name}",
+            )
+        return report_file.stored_file_name
 
     async def _ensure_recent_report_file(
         self,
@@ -192,10 +216,23 @@ class TenKReportService:
             request.report_type,
             report_metadata.filing_url,
         )
-        _ = origin_path.write_bytes(
-            await self._sec_client.download_file(report_metadata.filing_url),
+        filing_bytes = await self._sec_client.download_file(report_metadata.filing_url)
+        return await asyncio.to_thread(
+            self._render_and_store_report_file,
+            company_name,
+            report_metadata,
+            origin_path,
+            filing_bytes,
         )
 
+    def _render_and_store_report_file(
+        self,
+        company_name: str,
+        report_metadata: RecentReportMetadata,
+        origin_path: Path,
+        filing_bytes: bytes,
+    ) -> str:
+        _ = origin_path.write_bytes(filing_bytes)
         pdf_path = html_to_pdf(
             origin_path,
             filing_base_url(report_metadata.filing_url),

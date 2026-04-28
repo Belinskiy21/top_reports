@@ -19,12 +19,54 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  seed:
+    build:
+      context: .
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PYTHONUNBUFFERED: "1"
+      JWT_SECRET: ${JWT_SECRET:-top_reports_dev_secret}
+      SEC_USER_AGENT: ${SEC_USER_AGENT:-top-reports sec-contact@your-domain.com}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+      LOCAL_STORAGE_DIR: ${LOCAL_STORAGE_DIR:-storage/files}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+      CELERY_TIMEZONE: ${CELERY_TIMEZONE:-UTC}
+      REPORT_PREFETCH_USER_EMAIL: ${REPORT_PREFETCH_USER_EMAIL:-seeded-user@quartr.dev}
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-top_reports}
+    command: python -m db.seed
+    volumes:
+      - report_storage:/app/storage/files
+
   app:
     build:
       context: .
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
     environment:
       PYTHONUNBUFFERED: "1"
       PORT: ${PORT:-8000}
@@ -35,8 +77,9 @@ services:
       S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
       S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
       AWS_REGION: ${AWS_REGION:-us-east-1}
-      REPORT_PREFETCH_ENABLED: ${REPORT_PREFETCH_ENABLED:-false}
-      REPORT_PREFETCH_INTERVAL_SECONDS: ${REPORT_PREFETCH_INTERVAL_SECONDS:-86400}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+      CELERY_TIMEZONE: ${CELERY_TIMEZONE:-UTC}
       REPORT_PREFETCH_USER_EMAIL: ${REPORT_PREFETCH_USER_EMAIL:-seeded-user@quartr.dev}
       PGUSER: ${POSTGRES_USER:-postgres}
       PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -44,10 +87,107 @@ services:
       PGPORT: "5432"
       PGDATABASE: ${POSTGRES_DB:-top_reports}
     command: >
-      sh -c "python -m db.seed &&
-      exec python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+      sh -c "exec python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
     ports:
       - "${PORT:-8000}:${PORT:-8000}"
+    volumes:
+      - report_storage:/app/storage/files
+
+  prefetch_bootstrap:
+    build:
+      context: .
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    environment:
+      PYTHONUNBUFFERED: "1"
+      JWT_SECRET: ${JWT_SECRET:-top_reports_dev_secret}
+      SEC_USER_AGENT: ${SEC_USER_AGENT:-top-reports sec-contact@your-domain.com}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+      LOCAL_STORAGE_DIR: ${LOCAL_STORAGE_DIR:-storage/files}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+      CELERY_TIMEZONE: ${CELERY_TIMEZONE:-UTC}
+      REPORT_PREFETCH_USER_EMAIL: ${REPORT_PREFETCH_USER_EMAIL:-seeded-user@quartr.dev}
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-top_reports}
+    command: python -m app.bootstrap_prefetch
+    volumes:
+      - report_storage:/app/storage/files
+
+  worker:
+    build:
+      context: .
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    environment:
+      PYTHONUNBUFFERED: "1"
+      JWT_SECRET: ${JWT_SECRET:-top_reports_dev_secret}
+      SEC_USER_AGENT: ${SEC_USER_AGENT:-top-reports sec-contact@your-domain.com}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+      LOCAL_STORAGE_DIR: ${LOCAL_STORAGE_DIR:-storage/files}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+      CELERY_TIMEZONE: ${CELERY_TIMEZONE:-UTC}
+      REPORT_PREFETCH_USER_EMAIL: ${REPORT_PREFETCH_USER_EMAIL:-seeded-user@quartr.dev}
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-top_reports}
+    command: >
+      sh -c "exec celery -A app.celery_app.celery_app worker --loglevel=info"
+    volumes:
+      - report_storage:/app/storage/files
+
+  beat:
+    build:
+      context: .
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    environment:
+      PYTHONUNBUFFERED: "1"
+      JWT_SECRET: ${JWT_SECRET:-top_reports_dev_secret}
+      SEC_USER_AGENT: ${SEC_USER_AGENT:-top-reports sec-contact@your-domain.com}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+      LOCAL_STORAGE_DIR: ${LOCAL_STORAGE_DIR:-storage/files}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+      CELERY_TIMEZONE: ${CELERY_TIMEZONE:-UTC}
+      REPORT_PREFETCH_USER_EMAIL: ${REPORT_PREFETCH_USER_EMAIL:-seeded-user@quartr.dev}
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-top_reports}
+    command: >
+      sh -c "exec celery -A app.celery_app.celery_app beat --loglevel=info"
     volumes:
       - report_storage:/app/storage/files
 
